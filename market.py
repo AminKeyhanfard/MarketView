@@ -5,7 +5,7 @@ import sched
 import time
 
 s = sched.scheduler(time.time, time.sleep)
-wb = xw.Book('Wallet.xlsx')
+wb = xw.Book('file.xlsx')
 worksheet = wb.sheets('Tab1')
 
 url = 'https://wallex.ir/api/v2/markets'
