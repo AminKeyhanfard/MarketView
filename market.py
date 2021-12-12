@@ -3,33 +3,49 @@ from decimal import Decimal
 import xlwings as xw
 import sched
 import time
+import datetime
+#from secrets import technical_analysis_api
+
 
 s = sched.scheduler(time.time, time.sleep)
-wb = xw.Book('file.xlsx')
+wb = xw.Book('Wallet.xlsx')
 worksheet = wb.sheets('Tab1')
 
-url = 'https://wallex.ir/api/v2/markets'
+
+url_wallex = 'https://wallex.ir/api/v2/markets'
 payload = ""
 headers = {}
-cart_tmn = ['ETH-TMN', 'XLM-TMN', 'EOS-TMN', 'BCH-TMN',
-            'TRX-TMN', 'DOGE-TMN', 'SHIB-TMN', 'LTC-TMN']
-cart_usdt = ['ETH-USDT', 'XLM-USDT', 'EOS-USDT', 'BCH-USDT',
-             'TRX-USDT', 'DOGE-USDT', 'SHIB-USDT', 'LTC-USDT']
+response_wallex = requests.request(
+    "GET", url_wallex, headers=headers, data=payload).json()
+USDT_TMN = float(Decimal(
+    response_wallex['result']['symbols']['USDT-TMN']['stats']['askPrice']).normalize())
+print('USDT : ', USDT_TMN, 'Toman')
+
 
 def refresh_api():
-    response = requests.request("GET", url, headers=headers, data=payload).json()
+    wallet_list = ['ethereum', 'stellar', 'eos', 'bitcoin-cash',
+                   'tron', 'dogecoin', 'shiba-inu', 'litecoin']
+    ids_string = []
+    ids_string.append(','.join(wallet_list))
+    api_url = f'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids={ids_string[0]}&sparkline=false&order=id_asc'
+    data = requests.get(api_url).json()
+    print(datetime.datetime.now(), '  Package recieved! Updating...')
     r = 1
-    for item in cart_tmn:
-        worksheet.range('F'+str(r+1)).value = float(Decimal(
-            response['result']['symbols'][item]['stats']['bidPrice']).normalize())
-        r += 1
-    r = 1
-    for item in cart_usdt:
+    for item in data:
+        #        api_url_recommend = f"https://technical-analysis-api.com/api/v1/analysis/{item['symbol'].upper()}?apiKey={technical_analysis_api}"
+        #        print(api_url_recommend)
+        #        data_recommend = requests.get(api_url_recommend).json()
+        #        print(data_recommend)
+        # ,data_recommend['recommendation'])
+        print(item['name'], ' : ', item['current_price'])
+        worksheet.range('F'+str(r+1)).value = USDT_TMN*item['current_price']
         worksheet.range('H'+str(r+1)).value = float(Decimal(
-            response['result']['symbols'][item]['stats']['bidPrice']).normalize())
+            item['current_price']).normalize())
         r += 1
-    s.enter(5, 1, refresh_api)
+    print('Waiting for the next cycle...')
+    s.enter(10, 1, refresh_api)
 
-print("Refreshing...")
-s.enter(5, 1, refresh_api)
+
+print("Starting...")
+s.enter(0, 1, refresh_api)
 s.run()
